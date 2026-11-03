@@ -2,6 +2,8 @@
 # tag_tree_wdgt.py <Peter.Bienstman@gmail.com>
 #
 
+import sys
+
 from PyQt6 import QtCore, QtGui, QtWidgets
 
 from mnemosyne.libmnemosyne.gui_translator import _
@@ -17,6 +19,28 @@ from mnemosyne.libmnemosyne.criteria.default_criterion import DefaultCriterion
 
 DISPLAY_STRING = 0
 NODE = 1
+
+
+class TreeCheckBoxStyle(QtWidgets.QProxyStyle):
+
+    """Work around Qt 6.10's macOS style not drawing the check boxes of
+    QTreeWidget items (QListWidget and QCheckBox are fine). The check boxes
+    are still there and clickable, just invisible. We draw only that
+    indicator with the Fusion style and leave everything else native.
+
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.fusion = QtWidgets.QStyleFactory.create("Fusion")
+
+    def drawPrimitive(self, element, option, painter, widget=None):
+        if element == QtWidgets.QStyle.PrimitiveElement.\
+               PE_IndicatorItemViewItemCheck:
+            self.fusion.drawPrimitive(element, option, painter, widget)
+        else:
+            super().drawPrimitive(element, option, painter, widget)
+
 
 class TagDelegate(QtWidgets.QStyledItemDelegate):
 
@@ -77,6 +101,10 @@ class TagsTreeWdgt(Component, QtWidgets.QWidget):
         super().__init__(**kwds)
         self.layout = QtWidgets.QVBoxLayout(self)
         self.tree_wdgt = QtWidgets.QTreeWidget(self)
+        if sys.platform == "darwin":
+            # Keep a reference: setStyle does not take ownership.
+            self.tree_style = TreeCheckBoxStyle()
+            self.tree_wdgt.setStyle(self.tree_style)
         self.tree_wdgt.setColumnCount(2)
         self.tree_wdgt.setColumnHidden(1, True)
         self.tree_wdgt.setColumnHidden(NODE, True)
