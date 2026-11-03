@@ -115,7 +115,7 @@ macos:
 	make -C po
 
 	# Build the bundled app based on the specification file.
-	QT6DIR=/usr/local/opt/qt6 pyinstaller --log-level WARN mnemosyne.spec
+	pyinstaller --noconfirm --log-level WARN mnemosyne.spec
 
 	# Blank qt.conf to ensure that bundled qt is used over system qt.
 	touch dist/Mnemosyne.app/Contents/Resources/qt.conf
@@ -128,6 +128,12 @@ macos:
 	# tkinter bug - data directories not present
 	mkdir -p dist/Mnemosyne.app/Contents/MacOS/tk
 	mkdir -p dist/Mnemosyne.app/Contents/MacOS/tcl
+
+	# The steps above modify the bundle after PyInstaller signed it, which
+	# invalidates the signature (and Gatekeeper rejects such apps). Re-sign
+	# with CODESIGN_IDENTITY, or ad hoc ('-') if it is not set.
+	codesign --force --deep --sign "$${CODESIGN_IDENTITY:--}" dist/Mnemosyne.app
+	codesign --verify --deep --strict dist/Mnemosyne.app
 
 osx: macos
 
