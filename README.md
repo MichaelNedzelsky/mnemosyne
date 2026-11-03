@@ -148,97 +148,55 @@ matplotlib.
 
 ## Mac
 
-- Download and install Homebrew (see http://brew.sh)
-- Create a CODESIGN_IDENTITY certificate as described at https://github.com/pyinstaller/pyinstaller/wiki/Recipe-OSX-Code-Signing
-  - Open Applications > Utilities > Keychain Access
-  - From the Keychain Access menu, choose Certificate Assistant > Create a Certificate
-  - Name: something unique, I used "Devin Howard - Mnemosyne".
-  - Identity Type: Self Signed Root
-  - Certificate Type: Code signing
-  - when you run "make macos" below, ensure you have set the CODESIGN_IDENTITY environment variable to the Name you chose above. For example, I run it like
-      export CODESIGN_IDENTITY="Devin Howard - Mnemosyne"
-      make clean
-      make macos
-  - But you might instead run
-      export CODESIGN_IDENTITY="My Cool Certificate"
-      make clean
-      make macos
-- Open the Terminal.
-- Make sure you are using the latest version of Homebrew:
+These steps build a native `Mnemosyne.app` with PyInstaller. They were last
+tested on Apple Silicon (arm64) with Python 3.14, PyQt6 6.12 and PyInstaller 6.22.
+The app is built for the architecture of the Python you use, so an arm64 Python
+gives an Apple Silicon app and an x86_64 Python gives an Intel one.
+
+- Install [Homebrew](https://brew.sh), then Python and gettext (for the translations):
 
 ```
-brew update
+brew install python@3.14 gettext
 ```
 
-- Install dependencies for Mnemosyne. 
+- Create a virtual environment and install the dependencies plus PyInstaller:
 
 ```
-brew install python@3.9 qt@5 mplayer openjpeg libffi
-brew install --cask xquartz # needed for mplayer dylibs
-```
-
-- For Mnemosyne 2.8, we used Python 3.9.13 and Qt 5.15.3. To confirm you're using the correct versions:
-
-```
-python3 --version
-brew list --versions qt@5
-```
-
-- If the versions are not correct, and you need to edit a Homebrew dependency, you can use these commands:
-
-```
-brew uninstall <package-name>
-brew edit <package-name>
-# Example: replace the file with the contents of https://raw.githubusercontent.com/Homebrew/homebrew-core/e76ed3606c8008d2b8d9636a7e4e6f62cfeb6120/Formula/python3.rb and save it
-brew install <package-name>
-brew pin <package-name>
-```
-
-- Create a python virtual environment to isolate python dependencies from the rest of your system:
-
-```
-pip3 install virtualenv
-virtualenv --python=python3 venv
+python3.14 -m venv venv
 source venv/bin/activate
-```
-
-From now on, your shell should have a `(venv)` at the beginning indicating you're inside the virtual environment. Ensure the copy of pip in the virtual environment is at least version 21.1.1 or later:
-
-```
-pip --version
-```
-
-If not, upgrade pip with
-
-```
 pip install --upgrade pip
+pip install PyQt6 PyQt6-WebEngine matplotlib cheroot webob pillow gTTS argon2-cffi legacy-cgi pyinstaller
 ```
 
-- Install the python dependencies for Mnemosyne
-- Note for Mnemosyne 2.11, we used PyQt6
+- Build it (while the virtual environment is active):
 
 ```
-pip install argon2-cffi cheroot googletrans gtts matplotlib numpy pillow pyopengl sip tornado webob 
-
-# run this command and inspect the output to confirm you're using the correct versions
-pip install pyqt6 pyinstaller
-```
-
- - Build it (while still using the python virtual environment):
-
-```
-export CODESIGN_IDENTITY="Devin Howard - Mnemosyne" # see note above about CODESIGN_IDENTITY
 make clean
 make macos
 ```
 
- - Test the new application (back up your data directory first!):
+  `make clean` also deletes the tracked file
+  `mnemosyne/android/app/src/main/assets/python/mnemosyne.zip`; restore it with
+  `git restore mnemosyne/android/app/src/main/assets/python/mnemosyne.zip`.
+
+- Code signing: `make macos` signs `dist/Mnemosyne.app` with the identity in the
+  `CODESIGN_IDENTITY` environment variable, or ad hoc if it is not set. Ad-hoc
+  signing is enough to run the app on the machine that built it. To give the app
+  to other people without Gatekeeper warnings, you need an Apple Developer ID
+  certificate (`export CODESIGN_IDENTITY="Developer ID Application: ..."`) and
+  must notarize the app with `xcrun notarytool`.
+
+- Optional: set `TARGET_ARCH` to `arm64`, `x86_64` or `universal2`. A
+  `universal2` build only works if every installed wheel is universal2 too, and
+  matplotlib/numpy are not, so in practice build one app per architecture.
+
+- Test the new application (back up your data directory first!):
 
 ```
 open dist/Mnemosyne.app
 ```
 
- - Optionally drag and drop this new app to /Applications.
+- Optionally drag and drop this new app to /Applications.
 
 # Git and Github info
 

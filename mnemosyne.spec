@@ -274,7 +274,6 @@ hiddenimports = [
              'mnemosyne.pyqt_ui.main_wdgt',
              'mnemosyne.pyqt_ui.manage_card_types_dlg',
              'mnemosyne.pyqt_ui.manage_plugins_dlg',
-             'mnemosyne.pyqt_ui.mnemosyne_rc',
              'mnemosyne.pyqt_ui.qt_audio',
              'mnemosyne.pyqt_ui.qt_video',
              'mnemosyne.pyqt_ui.prefill_tag_behaviour_plugin',
@@ -308,17 +307,10 @@ hiddenimports = [
              'mnemosyne.web_server.web_server_render_chain'
 ]
 
-if sys.platform == 'darwin':
-             binaries.append(('/usr/local/lib/libcaca.0.dylib', '.'))
-             binaries.append(('/opt/X11/lib/libGL.1.dylib', '.'))
-             binaries.append(('/opt/X11/lib/libglut.3.dylib', '.'))
-             binaries.append(('/opt/X11/lib/libglapi.0.dylib', '.'))
-             binaries.append(('/opt/X11/lib/libXdamage.1.dylib', '.'))
-             binaries.append(('/opt/X11/lib/libXfixes.3.dylib', '.'))
-             binaries.append(('/opt/X11/lib/libXxf86vm.1.dylib', '.'))
-             binaries.append(('/opt/X11/lib/libXi.6.dylib', '.'))
-             binaries.append(('/opt/X11/lib/libXrandr.2.dylib', '.'))
-             binaries.append(('/opt/X11/lib/libXrender.1.dylib', '.'))
+# On macOS we used to bundle mplayer's dylibs from /usr/local and /opt/X11
+# here. Audio and video now go through QtWebEngine, and those Intel
+# Homebrew/XQuartz paths do not exist on Apple Silicon, so nothing extra
+# needs to be bundled.
 
 datas.append((os.path.join('mnemosyne', 'libmnemosyne', 'renderers', 'anki', 'hooks.py'), 'anki'))
 datas.append((os.path.join('mnemosyne', 'libmnemosyne', 'renderers', 'anki', 'lang.py'), 'anki'))
@@ -355,8 +347,19 @@ a = Analysis([os.path.join('mnemosyne', 'pyqt_ui', 'mnemosyne')],
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-codesign_identity = os.environ['CODESIGN_IDENTITY'] \
+# macOS: if CODESIGN_IDENTITY is not set, PyInstaller signs ad hoc, which is
+# enough to run locally (arm64 binaries must carry at least an ad-hoc
+# signature). TARGET_ARCH can be 'arm64', 'x86_64' or 'universal2'; the
+# default is the architecture of the Python running PyInstaller. Note that
+# 'universal2' only works if every installed wheel is universal2 as well.
+codesign_identity = os.environ.get('CODESIGN_IDENTITY') or None \
       if sys.platform == 'darwin' else None
+target_arch = os.environ.get('TARGET_ARCH') or None \
+      if sys.platform == 'darwin' else None
+
+# UPX-compressed Mach-O binaries break code signing (and arm64 binaries
+# will not run unsigned), so never use UPX on macOS.
+use_upx = sys.platform != 'darwin'
 
 exe = EXE(pyz,
           a.scripts,
@@ -364,8 +367,9 @@ exe = EXE(pyz,
           name='Mnemosyne',
           debug=False,
           strip=False,
-          upx=True,
+          upx=use_upx,
           console=False,
+          target_arch=target_arch,
           codesign_identity=codesign_identity,
           icon=os.path.join('pixmaps', 'mnemosyne.ico'))
 
@@ -379,7 +383,7 @@ coll = COLLECT(exe,
                a.zipfiles,
                a.datas,
                strip=False,
-               upx=True,
+               upx=use_upx,
                name='Mnemosyne')
 
 if sys.platform == 'darwin':

@@ -206,3 +206,7 @@ mnemosyne/android/gradle/gradle-daemon-jvm.properties
 
 # Backup files
 *.bak
+
+# PyInstaller (`make macos`, `make windows-installer`)
+build/
+dist/
