@@ -89,6 +89,9 @@ matching `uic`.
 
 ## Building Mnemosyne.app
 
+Step-by-step instructions for non-developers (Homebrew Python, fresh
+clone) are in [BUILD-MAC-APP.md](BUILD-MAC-APP.md).
+
 One-time setup of a build environment (`venv/` is ignored by git):
 
 ```
